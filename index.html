@@ -112,15 +112,29 @@ faceMesh.onResults(results => {
 });
 
 // Start camera
-const camera = new Camera(video, {
-  onFrame: async () => {
-    await faceMesh.send({ image: video });
-  },
-  width: 480,
-  height: 640
-});
+navigator.mediaDevices.getUserMedia({
+  video: {
+    facingMode: "user"   // 👈 IMPORTANT
+  }
+})
+.then(stream => {
+  video.srcObject = stream;
+  video.play();
 
-camera.start();
+  const camera = new Camera(video, {
+    onFrame: async () => {
+      await faceMesh.send({ image: video });
+    },
+    width: 480,
+    height: 640
+  });
+
+  camera.start();
+})
+.catch(err => {
+  alert("Camera access denied or not working");
+  console.log(err);
+});
 </script>
 
 </body>

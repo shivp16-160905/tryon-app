@@ -41,18 +41,17 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// 🔥 Get product image from URL
+// 🔥 Product Image
 const earring = new Image();
 const params = new URLSearchParams(window.location.search);
 const productImage = params.get("image");
-
 earring.src = productImage ? productImage : "https://i.imgur.com/7k12EPD.png";
 
 // 🔹 Smoothing
 let smoothLeftX = 0, smoothLeftY = 0;
 let smoothRightX = 0, smoothRightY = 0;
 
-// 🔹 Setup FaceMesh
+// 🔹 FaceMesh
 const faceMesh = new FaceMesh({
   locateFile: (file) =>
     `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
@@ -65,14 +64,12 @@ faceMesh.setOptions({
   minTrackingConfidence: 0.7
 });
 
-// 🔹 When face detected
+// 🔹 Results
 faceMesh.onResults(results => {
 
-  // ✅ Match canvas to video size
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  // ❌ DO NOT DRAW VIDEO HERE (important fix)
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   if (results.multiFaceLandmarks.length > 0) {
@@ -95,17 +92,37 @@ faceMesh.onResults(results => {
     smoothRightX = smoothRightX * 0.7 + x2 * 0.3;
     smoothRightY = smoothRightY * 0.7 + y2 * 0.3;
 
-    // 🔹 Dynamic size
+    // 🔹 Better scaling
     const faceWidth = Math.abs(leftEar.x - rightEar.x) * canvas.width;
-    const size = faceWidth * 0.18;
+    const size = faceWidth * 0.20;
 
-    // 🔹 Draw earrings
-    ctx.drawImage(earring, smoothLeftX - size/2, smoothLeftY - size/2, size, size);
-    ctx.drawImage(earring, smoothRightX - size/2, smoothRightY - size/2, size, size);
+    // 🔹 Head rotation angle
+    const angle = Math.atan2(
+      rightEar.y - leftEar.y,
+      rightEar.x - leftEar.x
+    );
+
+    // 🔹 Offset for realistic placement
+    const offsetX = size * 0.3;
+    const offsetY = size * 0.1;
+
+    // 🔥 LEFT EARRING
+    ctx.save();
+    ctx.translate(smoothLeftX - offsetX, smoothLeftY + offsetY);
+    ctx.rotate(angle);
+    ctx.drawImage(earring, -size/2, -size/2, size, size);
+    ctx.restore();
+
+    // 🔥 RIGHT EARRING
+    ctx.save();
+    ctx.translate(smoothRightX + offsetX, smoothRightY + offsetY);
+    ctx.rotate(angle);
+    ctx.drawImage(earring, -size/2, -size/2, size, size);
+    ctx.restore();
   }
 });
 
-// 🔹 Start Camera
+// 🔹 Camera
 navigator.mediaDevices.getUserMedia({
   video: { facingMode: "user" }
 })

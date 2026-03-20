@@ -41,17 +41,22 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// 🔥 Product Image
+// 🔥 Load Earring (Shopify OR Local)
 const earring = new Image();
 const params = new URLSearchParams(window.location.search);
 const productImage = params.get("image");
-earring.src = productImage ? productImage : "https://i.imgur.com/7k12EPD.png";
+
+if (productImage) {
+  earring.src = productImage; // Shopify product image
+} else {
+  earring.src = "assets/earring.png"; // Local fallback
+}
 
 // 🔹 Smoothing
 let smoothLeftX = 0, smoothLeftY = 0;
 let smoothRightX = 0, smoothRightY = 0;
 
-// 🔹 FaceMesh
+// 🔹 FaceMesh Setup
 const faceMesh = new FaceMesh({
   locateFile: (file) =>
     `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
@@ -64,7 +69,7 @@ faceMesh.setOptions({
   minTrackingConfidence: 0.7
 });
 
-// 🔹 Results
+// 🔹 On Results
 faceMesh.onResults(results => {
 
   canvas.width = video.videoWidth;
@@ -85,24 +90,24 @@ faceMesh.onResults(results => {
     const x2 = rightEar.x * canvas.width;
     const y2 = rightEar.y * canvas.height;
 
-    // 🔹 Smooth movement
+    // 🔹 Smooth tracking
     smoothLeftX = smoothLeftX * 0.7 + x1 * 0.3;
     smoothLeftY = smoothLeftY * 0.7 + y1 * 0.3;
 
     smoothRightX = smoothRightX * 0.7 + x2 * 0.3;
     smoothRightY = smoothRightY * 0.7 + y2 * 0.3;
 
-    // 🔹 Better scaling
+    // 🔹 Size based on face
     const faceWidth = Math.abs(leftEar.x - rightEar.x) * canvas.width;
     const size = faceWidth * 0.20;
 
-    // 🔹 Head rotation angle
+    // 🔹 Head tilt rotation
     const angle = Math.atan2(
       rightEar.y - leftEar.y,
       rightEar.x - leftEar.x
     );
 
-    // 🔹 Offset for realistic placement
+    // 🔹 Position adjustment
     const offsetX = size * 0.3;
     const offsetY = size * 0.1;
 
@@ -122,12 +127,13 @@ faceMesh.onResults(results => {
   }
 });
 
-// 🔹 Camera
+// 🔹 Camera Start
 navigator.mediaDevices.getUserMedia({
   video: { facingMode: "user" }
 })
 .then(stream => {
   video.srcObject = stream;
+
   video.onloadedmetadata = () => {
     video.play();
 

@@ -81,35 +81,39 @@ faceMesh.onResults(results => {
 
     const landmarks = results.multiFaceLandmarks[0];
 
-    const leftEar = landmarks[234];
-    const rightEar = landmarks[454];
+    // 🔥 IMPROVED EAR POSITION (KEY FIX)
+    const leftEarX = (landmarks[234].x + landmarks[93].x) / 2;
+    const leftEarY = (landmarks[234].y + landmarks[132].y) / 2;
 
-    const x1 = leftEar.x * canvas.width;
-    const y1 = leftEar.y * canvas.height;
+    const rightEarX = (landmarks[454].x + landmarks[323].x) / 2;
+    const rightEarY = (landmarks[454].y + landmarks[361].y) / 2;
 
-    const x2 = rightEar.x * canvas.width;
-    const y2 = rightEar.y * canvas.height;
+    const x1 = leftEarX * canvas.width;
+    const y1 = leftEarY * canvas.height;
 
-    // 🔹 Smooth movement
+    const x2 = rightEarX * canvas.width;
+    const y2 = rightEarY * canvas.height;
+
+    // 🔹 Smooth tracking
     smoothLeftX = smoothLeftX * 0.7 + x1 * 0.3;
     smoothLeftY = smoothLeftY * 0.7 + y1 * 0.3;
 
     smoothRightX = smoothRightX * 0.7 + x2 * 0.3;
     smoothRightY = smoothRightY * 0.7 + y2 * 0.3;
 
-    // 🔹 Size based on face width
-    const faceWidth = Math.abs(leftEar.x - rightEar.x) * canvas.width;
-    const size = Math.max(faceWidth * 0.20, 80);
+    // 🔹 Size based on face
+    const faceWidth = Math.abs(leftEarX - rightEarX) * canvas.width;
+    const size = Math.max(faceWidth * 0.18, 70);
 
-    // 🔹 Head tilt rotation
+    // 🔹 Head rotation
     const angle = Math.atan2(
-      rightEar.y - leftEar.y,
-      rightEar.x - leftEar.x
+      rightEarY - leftEarY,
+      rightEarX - leftEarX
     );
 
-    // 🔥 FINAL CALIBRATED OFFSETS
-    const offsetX = size * 0.5;   // move outward to ear
-    const offsetY = size * 0.3;   // move down to earlobe
+    // 🔥 FINAL OFFSETS (CALIBRATED)
+    const offsetX = size * 0.25;
+    const offsetY = size * 0.35;
 
     // 🔥 LEFT EARRING
     ctx.save();

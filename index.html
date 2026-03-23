@@ -8,15 +8,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
+    body { margin: 0; overflow: hidden; }
 
     video {
       position: absolute;
-      top: 0;
-      left: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -24,8 +19,6 @@
 
     canvas {
       position: absolute;
-      top: 0;
-      left: 0;
       pointer-events: none;
     }
   </style>
@@ -41,20 +34,23 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// 🔥 Load image (Shopify OR Local)
-const earring = new Image();
+// 🔥 LOAD LEFT & RIGHT IMAGES
+const leftEarring = new Image();
+const rightEarring = new Image();
+
 const params = new URLSearchParams(window.location.search);
 const productImage = params.get("image");
 
 if (productImage) {
-  earring.src = productImage;
+  leftEarring.src = productImage;
+  rightEarring.src = productImage;
 } else {
-  earring.src = "assets/earring.png";
+  leftEarring.src = "assets/left.png";
+  rightEarring.src = "assets/right.png";
 }
 
-// 🔹 Smooth variables
-let smoothLeftX = 0, smoothLeftY = 0;
-let smoothRightX = 0, smoothRightY = 0;
+// 🔹 smoothing
+let smoothLX=0, smoothLY=0, smoothRX=0, smoothRY=0;
 
 // 🔹 FaceMesh
 const faceMesh = new FaceMesh({
@@ -69,69 +65,66 @@ faceMesh.setOptions({
   minTrackingConfidence: 0.7
 });
 
-// 🔹 On Results
+// 🔹 RESULT
 faceMesh.onResults(results => {
 
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
   if (results.multiFaceLandmarks.length > 0) {
 
-    const landmarks = results.multiFaceLandmarks[0];
+    const lm = results.multiFaceLandmarks[0];
 
-    // 🔥 IMPROVED EAR POSITION (KEY FIX)
-    const leftEarX = (landmarks[234].x + landmarks[93].x) / 2;
-    const leftEarY = (landmarks[234].y + landmarks[132].y) / 2;
+    // 🔥 BETTER EAR POSITION
+    const leftX = (lm[234].x + lm[93].x)/2;
+    const leftY = (lm[234].y + lm[132].y)/2;
 
-    const rightEarX = (landmarks[454].x + landmarks[323].x) / 2;
-    const rightEarY = (landmarks[454].y + landmarks[361].y) / 2;
+    const rightX = (lm[454].x + lm[323].x)/2;
+    const rightY = (lm[454].y + lm[361].y)/2;
 
-    const x1 = leftEarX * canvas.width;
-    const y1 = leftEarY * canvas.height;
+    const x1 = leftX * canvas.width;
+    const y1 = leftY * canvas.height;
 
-    const x2 = rightEarX * canvas.width;
-    const y2 = rightEarY * canvas.height;
+    const x2 = rightX * canvas.width;
+    const y2 = rightY * canvas.height;
 
-    // 🔹 Smooth tracking
-    smoothLeftX = smoothLeftX * 0.7 + x1 * 0.3;
-    smoothLeftY = smoothLeftY * 0.7 + y1 * 0.3;
+    // 🔹 smoothing
+    smoothLX = smoothLX*0.7 + x1*0.3;
+    smoothLY = smoothLY*0.7 + y1*0.3;
 
-    smoothRightX = smoothRightX * 0.7 + x2 * 0.3;
-    smoothRightY = smoothRightY * 0.7 + y2 * 0.3;
+    smoothRX = smoothRX*0.7 + x2*0.3;
+    smoothRY = smoothRY*0.7 + y2*0.3;
 
-    // 🔹 Size based on face
-    const faceWidth = Math.abs(leftEarX - rightEarX) * canvas.width;
+    // 🔹 size
+    const faceWidth = Math.abs(leftX - rightX) * canvas.width;
     const size = Math.max(faceWidth * 0.18, 70);
 
-    // 🔹 Head rotation
-    const angle = Math.atan2(
-      rightEarY - leftEarY,
-      rightEarX - leftEarX
-    );
+    // 🔹 rotation
+    const angle = Math.atan2(rightY-leftY, rightX-leftX);
 
-    // 🔥 FINAL OFFSETS (CALIBRATED)
+    // 🔥 offsets
     const offsetX = size * 0.25;
     const offsetY = size * 0.35;
 
-    // 🔥 LEFT EARRING
+    // 🔥 LEFT
     ctx.save();
-    ctx.translate(smoothLeftX - offsetX, smoothLeftY + offsetY);
+    ctx.translate(smoothLX - offsetX, smoothLY + offsetY);
     ctx.rotate(angle);
-    ctx.drawImage(earring, -size/2, -size/2, size, size);
+    ctx.drawImage(leftEarring, -size/2, -size/2, size, size);
     ctx.restore();
 
-    // 🔥 RIGHT EARRING
+    // 🔥 RIGHT
     ctx.save();
-    ctx.translate(smoothRightX + offsetX, smoothRightY + offsetY);
+    ctx.translate(smoothRX + offsetX, smoothRY + offsetY);
     ctx.rotate(angle);
-    ctx.drawImage(earring, -size/2, -size/2, size, size);
+    ctx.drawImage(rightEarring, -size/2, -size/2, size, size);
     ctx.restore();
   }
 });
 
-// 🔹 Camera Start
+// 🔹 CAMERA
 navigator.mediaDevices.getUserMedia({
   video: { facingMode: "user" }
 })
@@ -151,8 +144,7 @@ navigator.mediaDevices.getUserMedia({
   };
 })
 .catch(err => {
-  alert("Camera access denied. Please allow camera.");
-  console.log(err);
+  alert("Camera access denied");
 });
 </script>
 

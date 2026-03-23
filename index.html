@@ -41,22 +41,22 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// 🔥 Load Earring (Shopify OR Local)
+// 🔥 Load image (Shopify OR Local)
 const earring = new Image();
 const params = new URLSearchParams(window.location.search);
 const productImage = params.get("image");
 
 if (productImage) {
-  earring.src = productImage; // Shopify product image
+  earring.src = productImage;
 } else {
-  earring.src = "assets/earring.png"; // Local fallback
+  earring.src = "assets/earring.png";
 }
 
-// 🔹 Smoothing
+// 🔹 Smooth variables
 let smoothLeftX = 0, smoothLeftY = 0;
 let smoothRightX = 0, smoothRightY = 0;
 
-// 🔹 FaceMesh Setup
+// 🔹 FaceMesh
 const faceMesh = new FaceMesh({
   locateFile: (file) =>
     `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
@@ -90,16 +90,16 @@ faceMesh.onResults(results => {
     const x2 = rightEar.x * canvas.width;
     const y2 = rightEar.y * canvas.height;
 
-    // 🔹 Smooth tracking
+    // 🔹 Smooth movement
     smoothLeftX = smoothLeftX * 0.7 + x1 * 0.3;
     smoothLeftY = smoothLeftY * 0.7 + y1 * 0.3;
 
     smoothRightX = smoothRightX * 0.7 + x2 * 0.3;
     smoothRightY = smoothRightY * 0.7 + y2 * 0.3;
 
-    // 🔹 Size based on face
+    // 🔹 Size based on face width
     const faceWidth = Math.abs(leftEar.x - rightEar.x) * canvas.width;
-    const size = faceWidth * 0.20;
+    const size = Math.max(faceWidth * 0.20, 80);
 
     // 🔹 Head tilt rotation
     const angle = Math.atan2(
@@ -107,9 +107,9 @@ faceMesh.onResults(results => {
       rightEar.x - leftEar.x
     );
 
-    // 🔹 Position adjustment
-    const offsetX = size * 0.3;
-    const offsetY = size * 0.1;
+    // 🔥 FINAL CALIBRATED OFFSETS
+    const offsetX = size * 0.5;   // move outward to ear
+    const offsetY = size * 0.3;   // move down to earlobe
 
     // 🔥 LEFT EARRING
     ctx.save();

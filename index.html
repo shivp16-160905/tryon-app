@@ -34,42 +34,27 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-
-// 🔥 LOAD IMAGES (FIXED)
+// ✅ USE ONLINE IMAGE FIRST (to confirm rendering works)
 const leftEarring = new Image();
 const rightEarring = new Image();
 
-// 👉 Try local first
-leftEarring.src = "assets/left.png";
-rightEarring.src = "assets/right.png";
-
-// 👉 Backup (uncomment if local fails)
-// leftEarring.src = "https://i.imgur.com/7k12EPD.png";
-// rightEarring.src = "https://i.imgur.com/7k12EPD.png";
+// 🔥 IMPORTANT: use SAME image for testing
+leftEarring.src = "https://i.imgur.com/7k12EPD.png";
+rightEarring.src = "https://i.imgur.com/7k12EPD.png";
 
 let imagesLoaded = false;
-let loadedCount = 0;
 
-function checkLoaded() {
-  loadedCount++;
-  if (loadedCount === 2) {
+leftEarring.onload = () => {
+  rightEarring.onload = () => {
     imagesLoaded = true;
     console.log("✅ Images Loaded");
-  }
-}
+  };
+};
 
-leftEarring.onload = checkLoaded;
-rightEarring.onload = checkLoaded;
-
-leftEarring.onerror = () => console.log("❌ Left image failed");
-rightEarring.onerror = () => console.log("❌ Right image failed");
-
-
-// 🔹 smoothing
+// smoothing
 let smoothLX=0, smoothLY=0, smoothRX=0, smoothRY=0;
 
-
-// 🔹 FaceMesh
+// FaceMesh
 const faceMesh = new FaceMesh({
   locateFile: (file) =>
     `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
@@ -82,8 +67,7 @@ faceMesh.setOptions({
   minTrackingConfidence: 0.5
 });
 
-
-// 🔹 RESULT
+// RESULTS
 faceMesh.onResults(results => {
 
   canvas.width = video.videoWidth;
@@ -91,16 +75,13 @@ faceMesh.onResults(results => {
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // ❗ Important check
   if (!results.multiFaceLandmarks || 
       results.multiFaceLandmarks.length === 0 || 
-      !imagesLoaded) {
-    return;
-  }
+      !imagesLoaded) return;
 
   const lm = results.multiFaceLandmarks[0];
 
-  // 🔥 Better ear approx
+  // ear positions
   const leftX = (lm[234].x + lm[93].x)/2;
   const leftY = (lm[234].y + lm[132].y)/2;
 
@@ -113,45 +94,27 @@ faceMesh.onResults(results => {
   const x2 = rightX * canvas.width;
   const y2 = rightY * canvas.height;
 
-  // 🔴 DEBUG DOTS (you should see these)
+  // debug dots
   ctx.fillStyle = "red";
   ctx.fillRect(x1, y1, 8, 8);
   ctx.fillRect(x2, y2, 8, 8);
 
-  // 🔹 smoothing
+  // smoothing
   smoothLX = smoothLX*0.7 + x1*0.3;
   smoothLY = smoothLY*0.7 + y1*0.3;
 
   smoothRX = smoothRX*0.7 + x2*0.3;
   smoothRY = smoothRY*0.7 + y2*0.3;
 
-  // 🔹 size based on face
   const faceWidth = Math.abs(leftX - rightX) * canvas.width;
   const size = Math.max(faceWidth * 0.25, 80);
 
-  // 🔹 rotation
-  const angle = Math.atan2(rightY-leftY, rightX-leftX);
-
-  const offsetX = size * 0.3;
-  const offsetY = size * 0.4;
-
-  // 🔥 LEFT EARRING
-  ctx.save();
-  ctx.translate(smoothLX - offsetX, smoothLY + offsetY);
-  ctx.rotate(angle);
-  ctx.drawImage(leftEarring, -size/2, -size/2, size, size);
-  ctx.restore();
-
-  // 🔥 RIGHT EARRING
-  ctx.save();
-  ctx.translate(smoothRX + offsetX, smoothRY + offsetY);
-  ctx.rotate(angle);
-  ctx.drawImage(rightEarring, -size/2, -size/2, size, size);
-  ctx.restore();
+  // 🔥 SIMPLE DRAW (no rotation for now)
+  ctx.drawImage(leftEarring, smoothLX - size/2, smoothLY, size, size);
+  ctx.drawImage(rightEarring, smoothRX - size/2, smoothRY, size, size);
 });
 
-
-// 🔹 CAMERA
+// CAMERA
 navigator.mediaDevices.getUserMedia({
   video: { facingMode: "user" }
 })
@@ -172,7 +135,6 @@ navigator.mediaDevices.getUserMedia({
 })
 .catch(err => {
   alert("Camera access denied");
-  console.log(err);
 });
 </script>
 

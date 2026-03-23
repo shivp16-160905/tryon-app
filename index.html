@@ -34,20 +34,22 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// 🔥 LOAD LEFT & RIGHT IMAGES
+// 🔥 LOAD LEFT & RIGHT IMAGES WITH FIX
 const leftEarring = new Image();
 const rightEarring = new Image();
 
-const params = new URLSearchParams(window.location.search);
-const productImage = params.get("image");
+let imagesLoaded = 0;
 
-if (productImage) {
-  leftEarring.src = productImage;
-  rightEarring.src = productImage;
-} else {
-  leftEarring.src = "assets/left.png";
-  rightEarring.src = "assets/right.png";
+function checkLoaded() {
+  imagesLoaded++;
 }
+
+leftEarring.onload = checkLoaded;
+rightEarring.onload = checkLoaded;
+
+// 👉 LOCAL FILES
+leftEarring.src = "assets/left.png";
+rightEarring.src = "assets/right.png";
 
 // 🔹 smoothing
 let smoothLX=0, smoothLY=0, smoothRX=0, smoothRY=0;
@@ -67,6 +69,9 @@ faceMesh.setOptions({
 
 // 🔹 RESULT
 faceMesh.onResults(results => {
+
+  // ❗ WAIT UNTIL IMAGES LOAD
+  if (imagesLoaded < 2) return;
 
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
@@ -104,7 +109,7 @@ faceMesh.onResults(results => {
     // 🔹 rotation
     const angle = Math.atan2(rightY-leftY, rightX-leftX);
 
-    // 🔥 offsets
+    // 🔹 offsets
     const offsetX = size * 0.25;
     const offsetY = size * 0.35;
 

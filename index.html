@@ -5,7 +5,6 @@
 
   <!-- MediaPipe -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
   <style>
     body { margin: 0; overflow: hidden; }
@@ -34,27 +33,17 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// ✅ USE ONLINE IMAGE FIRST (to confirm rendering works)
-const leftEarring = new Image();
-const rightEarring = new Image();
+// ✅ Use ONLINE image first (to remove path issues)
+const earring = new Image();
+earring.src = "https://i.imgur.com/7k12EPD.png";
 
-// 🔥 IMPORTANT: use SAME image for testing
-leftEarring.src = "https://i.imgur.com/7k12EPD.png";
-rightEarring.src = "https://i.imgur.com/7k12EPD.png";
-
-let imagesLoaded = false;
-
-leftEarring.onload = () => {
-  rightEarring.onload = () => {
-    imagesLoaded = true;
-    console.log("✅ Images Loaded");
-  };
+let imageLoaded = false;
+earring.onload = () => {
+  imageLoaded = true;
+  console.log("✅ Image Loaded");
 };
 
-// smoothing
-let smoothLX=0, smoothLY=0, smoothRX=0, smoothRY=0;
-
-// FaceMesh
+// 🔹 FaceMesh setup
 const faceMesh = new FaceMesh({
   locateFile: (file) =>
     `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
@@ -67,54 +56,49 @@ faceMesh.setOptions({
   minTrackingConfidence: 0.5
 });
 
-// RESULTS
+// 🔥 RESULT
 faceMesh.onResults(results => {
 
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (!results.multiFaceLandmarks || 
-      results.multiFaceLandmarks.length === 0 || 
-      !imagesLoaded) return;
+  if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
+    console.log("❌ No face detected");
+    return;
+  }
+
+  if (!imageLoaded) return;
+
+  console.log("✅ Face detected");
 
   const lm = results.multiFaceLandmarks[0];
 
-  // ear positions
-  const leftX = (lm[234].x + lm[93].x)/2;
-  const leftY = (lm[234].y + lm[132].y)/2;
+  // 🎯 Ear points
+  const left = lm[234];
+  const right = lm[454];
 
-  const rightX = (lm[454].x + lm[323].x)/2;
-  const rightY = (lm[454].y + lm[361].y)/2;
+  const x1 = left.x * canvas.width;
+  const y1 = left.y * canvas.height;
 
-  const x1 = leftX * canvas.width;
-  const y1 = leftY * canvas.height;
+  const x2 = right.x * canvas.width;
+  const y2 = right.y * canvas.height;
 
-  const x2 = rightX * canvas.width;
-  const y2 = rightY * canvas.height;
-
-  // debug dots
+  // 🔴 DEBUG DOTS
   ctx.fillStyle = "red";
-  ctx.fillRect(x1, y1, 8, 8);
-  ctx.fillRect(x2, y2, 8, 8);
+  ctx.fillRect(x1, y1, 10, 10);
+  ctx.fillRect(x2, y2, 10, 10);
 
-  // smoothing
-  smoothLX = smoothLX*0.7 + x1*0.3;
-  smoothLY = smoothLY*0.7 + y1*0.3;
+  const size = 100;
 
-  smoothRX = smoothRX*0.7 + x2*0.3;
-  smoothRY = smoothRY*0.7 + y2*0.3;
-
-  const faceWidth = Math.abs(leftX - rightX) * canvas.width;
-  const size = Math.max(faceWidth * 0.25, 80);
-
-  // 🔥 SIMPLE DRAW (no rotation for now)
-  ctx.drawImage(leftEarring, smoothLX - size/2, smoothLY, size, size);
-  ctx.drawImage(rightEarring, smoothRX - size/2, smoothRY, size, size);
+  // 🔥 DRAW EARRINGS (simple)
+  ctx.drawImage(earring, x1 - size/2, y1, size, size);
+  ctx.drawImage(earring, x2 - size/2, y2, size, size);
 });
 
-// CAMERA
+
+// 🔥 START CAMERA + LOOP (NO Camera() used)
 navigator.mediaDevices.getUserMedia({
   video: { facingMode: "user" }
 })
@@ -124,17 +108,17 @@ navigator.mediaDevices.getUserMedia({
   video.onloadedmetadata = () => {
     video.play();
 
-    const camera = new Camera(video, {
-      onFrame: async () => {
-        await faceMesh.send({ image: video });
-      }
-    });
+    async function detect() {
+      await faceMesh.send({ image: video });
+      requestAnimationFrame(detect);
+    }
 
-    camera.start();
+    detect(); // 🔥 KEY LINE
   };
 })
 .catch(err => {
   alert("Camera access denied");
+  console.log(err);
 });
 </script>
 

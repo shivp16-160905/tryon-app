@@ -14,11 +14,13 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+      transform: scaleX(-1); /* mirror */
     }
 
     canvas {
       position: absolute;
       pointer-events: none;
+      transform: scaleX(-1); /* match mirror */
     }
   </style>
 </head>
@@ -33,7 +35,7 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// ✅ Use ONLINE image first (to remove path issues)
+// 🔥 LOAD IMAGE (for now single earring)
 const earring = new Image();
 earring.src = "https://i.imgur.com/7k12EPD.png";
 
@@ -42,6 +44,9 @@ earring.onload = () => {
   imageLoaded = true;
   console.log("✅ Image Loaded");
 };
+
+// 🔹 smoothing variables
+let lx = 0, ly = 0, rx = 0, ry = 0;
 
 // 🔹 FaceMesh setup
 const faceMesh = new FaceMesh({
@@ -52,8 +57,8 @@ const faceMesh = new FaceMesh({
 faceMesh.setOptions({
   maxNumFaces: 1,
   refineLandmarks: true,
-  minDetectionConfidence: 0.5,
-  minTrackingConfidence: 0.5
+  minDetectionConfidence: 0.6,
+  minTrackingConfidence: 0.6
 });
 
 // 🔥 RESULT
@@ -64,41 +69,53 @@ faceMesh.onResults(results => {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
-    console.log("❌ No face detected");
+  if (!results.multiFaceLandmarks || 
+      results.multiFaceLandmarks.length === 0 || 
+      !imageLoaded) {
     return;
   }
 
-  if (!imageLoaded) return;
-
-  console.log("✅ Face detected");
-
   const lm = results.multiFaceLandmarks[0];
 
-  // 🎯 Ear points
-  const left = lm[234];
-  const right = lm[454];
+  // 🔥 BETTER EAR POSITION (3-point average)
+  const leftX = (lm[234].x + lm[93].x + lm[132].x) / 3;
+  const leftY = (lm[234].y + lm[93].y + lm[132].y) / 3;
 
-  const x1 = left.x * canvas.width;
-  const y1 = left.y * canvas.height;
+  const rightX = (lm[454].x + lm[323].x + lm[361].x) / 3;
+  const rightY = (lm[454].y + lm[323].y + lm[361].y) / 3;
 
-  const x2 = right.x * canvas.width;
-  const y2 = right.y * canvas.height;
+  const x1 = leftX * canvas.width;
+  const y1 = leftY * canvas.height;
+
+  const x2 = rightX * canvas.width;
+  const y2 = rightY * canvas.height;
 
   // 🔴 DEBUG DOTS
   ctx.fillStyle = "red";
-  ctx.fillRect(x1, y1, 10, 10);
-  ctx.fillRect(x2, y2, 10, 10);
+  ctx.fillRect(x1, y1, 6, 6);
+  ctx.fillRect(x2, y2, 6, 6);
 
-  const size = 100;
+  // 🔹 smoothing
+  lx = lx * 0.7 + x1 * 0.3;
+  ly = ly * 0.7 + y1 * 0.3;
 
-  // 🔥 DRAW EARRINGS (simple)
-  ctx.drawImage(earring, x1 - size/2, y1, size, size);
-  ctx.drawImage(earring, x2 - size/2, y2, size, size);
+  rx = rx * 0.7 + x2 * 0.3;
+  ry = ry * 0.7 + y2 * 0.3;
+
+  // 🔹 dynamic size
+  const faceWidth = Math.abs(x1 - x2);
+  const size = Math.max(faceWidth * 0.35, 80);
+
+  // 🔹 offset (important)
+  const offsetY = size * 0.5;
+
+  // 🔥 DRAW EARRINGS
+  ctx.drawImage(earring, lx - size/2, ly + offsetY, size, size);
+  ctx.drawImage(earring, rx - size/2, ry + offsetY, size, size);
 });
 
 
-// 🔥 START CAMERA + LOOP (NO Camera() used)
+// 🔥 START CAMERA + LOOP (STABLE)
 navigator.mediaDevices.getUserMedia({
   video: { facingMode: "user" }
 })
@@ -113,7 +130,7 @@ navigator.mediaDevices.getUserMedia({
       requestAnimationFrame(detect);
     }
 
-    detect(); // 🔥 KEY LINE
+    detect();
   };
 })
 .catch(err => {
